@@ -39,7 +39,7 @@ The quality measurement matrices that we use are UIQM (Underwater Image Quality 
     python -m venv venv
     ```
     
-    * create virtual environment
+    * activate your environment
     ```bash
     # Windows command prompt
     .venv\Scripts\activate.bat
