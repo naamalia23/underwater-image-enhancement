@@ -84,6 +84,7 @@ def main():
             wavelet_img = wavelet_based_fusion(image)
 
             # Calculate LOE for each method
+            loe_original = calculate_LOE(image, image)
             loe_clahe = calculate_LOE(image, clahe_img)
             loe_unsharp_mask = calculate_LOE(image, unsharp_mask_img)
             loe_fused_image = calculate_LOE(image, fused_img)
@@ -91,6 +92,7 @@ def main():
             loe_wavelet = calculate_LOE(image, wavelet_img)
             
             # Calculate UIQM for each method
+            uiqm_original = UIQM(image)
             uiqm_clahe = UIQM(clahe_img)
             uiqm_unsharp_mask = UIQM(unsharp_mask_img)
             uiqm_fused = UIQM(fused_img)
@@ -98,6 +100,7 @@ def main():
             uiqm_wavelet = UIQM(wavelet_img)
             
             # Calculate UCIQE for each method
+            uciqe_original = UCIQE(image)
             uciqe_clahe = UCIQE(clahe_img)
             uciqe_unsharp_mask = UCIQE(unsharp_mask_img)
             uciqe_fused = UCIQE(fused_img)
@@ -113,7 +116,8 @@ def main():
 
             col1, col2, col3, col4, col5, col6 = st.columns(6)
             with col1:
-                st.image(image, caption="Original Image", use_column_width=True)
+                st.image(image, use_column_width=True)
+                st.markdown(f"**Original Image**\n\nLOE: {loe_original:.2f}\n\nUIQM: {uiqm_original:.2f}\n\nUCIQE: {uciqe_original:.2f}\n\n")
             with col2:
                 st.image(clahe_img, use_column_width=True)
                 st.markdown(f"**CLAHE Enhanced Image**\n\nLOE: {loe_clahe:.2f}\n\nUIQM: {uiqm_clahe:.2f}\n\nUCIQE: {uciqe_clahe:.2f}\n\n")
