@@ -45,3 +45,4 @@ def hef_filtering(image, radius=1, cutoff_distance=10):
     hef_sharpened *= 255
 
     return hef_sharpened.astype(np.uint8)
+    
