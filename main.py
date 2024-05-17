@@ -1,52 +1,34 @@
 import cv2
 import numpy as np
-import streamlit as st
 from PIL import Image
+import streamlit as st
+from streamlit_option_menu import option_menu
 
-# Function to perform CLAHE (Contrast Limited Adaptive Histogram Equalization)
-def apply_clahe(image):
-    # Convert the image to LAB color space
-    lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
-    
-    # Split the LAB image into L, A, and B channels
-    l, a, b = cv2.split(lab)
-    
-    # Apply CLAHE to the L channel
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-    l_clahe = clahe.apply(l)
-    
-    # Merge the CLAHE-enhanced L channel with the original A and B channels
-    lab_clahe = cv2.merge((l_clahe, a, b))
-    
-    # Convert LAB image back to RGB
-    enhanced_image = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2RGB)
-    
-    return enhanced_image
 
-# Function to perform Unsharp Masking
-def unsharp_masking(image, radius=3, amount=0):
-    """
-    Return a sharpened version of the image using Unsharp Masking (UM).
-    
-    Parameters:
-        - image: Input image (numpy array).
-        - radius: Radius of the Gaussian kernel for blurring (int).
-        - amount: Amount of contrast added to the edges (float).
-    
-    Returns:
-        - Sharpened image (numpy array).
-    """
-    # Apply Gaussian blur to the input image
-    blurred = cv2.GaussianBlur(image, (radius, radius), 50)
-    
-    # Calculate the unsharp mask
-    unsharp_mask = cv2.subtract(image, blurred)
-    
-    # Apply the unsharp mask to enhance the original image
-    enhanced_image = cv2.addWeighted(image, 1 +amount, unsharp_mask, -amount, 0)
-    
-    
-    return enhanced_image.astype(np.uint8)
+
+from methods.clahe import apply_clahe
+from methods.unsharp_masking import unsharp_masking
+from methods.hef import hef_filtering
+
+from measurement.loe import calculate_LOE
+from measurement.uiqm import UIQM
+from measurement.uciqe import UCIQE
+from measurement.uiqm_uciqe import nmetrics
+
+
+# with st.sidebar:
+#     selected = option_menu("Main Menu", ["Home", 'Settings'], 
+#         icons=['house', 'gear'], menu_icon="cast", default_index=1)
+#     selected
+
+# Load custom CSS
+def load_css():
+    with open("style.css") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+# Load custom CSS
+load_css()
+
 
 # Function to perform image fusion
 def image_fusion(image, alpha=0.5):
@@ -79,38 +61,6 @@ def image_fusion(image, alpha=0.5):
     
     return fused_image.astype(np.uint8)
 
-#https://stackoverflow.com/questions/37596001/lightness-order-error-loe-for-images-quality-assessement-matlab
-#bisa cari referensi lain untuk IQA. pak khahlil pake loe di papaer xray enhancement
-def calculate_LOE(original_image, enhanced_image): #
-    # Get the dimensions of the original image
-    N, M, _ = original_image.shape
-
-    # Calculate the lightness of the original and enhanced images
-    L = np.max(original_image, axis=2)
-    Le = np.max(enhanced_image, axis=2)
-
-    # Calculate the downsampling factor
-    r = 50 / min(M, N)
-
-    # Perform downsampling
-    Md = round(M * r)
-    Nd = round(N * r)
-    Ld = cv2.resize(L, (Md, Nd))
-    Led = cv2.resize(Le, (Md, Nd))
-
-    # Initialize RD matrix
-    RD = np.zeros((Nd, Md))
-
-    # Calculate RD values
-    for y in range(Md):
-        for x in range(Nd):
-            E = np.bitwise_xor(Ld[x, y] >= Ld, Led[x, y] >= Led)
-            RD[x, y] = np.sum(E)
-
-    # Calculate LOE
-    LOE = np.sum(RD) / (Md * Nd)
-    return LOE
-
 
 # Main function to run the Streamlit app
 def main():
@@ -132,23 +82,53 @@ def main():
             unsharp_mask_img = unsharp_masking(image)
 
             # Apply image fusion
-            fused_image = image_fusion(image)
+            fused_img = image_fusion(image)
+
+            # Applay HEF filtering
+            hef_img = hef_filtering(image)
 
             # Calculate LOE for each method
             loe_clahe = calculate_LOE(image, clahe_img)
             loe_unsharp_mask = calculate_LOE(image, unsharp_mask_img)
-            loe_fused_image = calculate_LOE(image, fused_image)
+            loe_fused_image = calculate_LOE(image, fused_img)
+            loe_hef_image = calculate_LOE(image, hef_img)
+            
+            # Calculate UIQM, UCIQE, and nmetrics for each method
+            uiqm_clahe = UIQM(clahe_img)
+            uciqe_clahe = UCIQE(clahe_img)
+            nmetrics_clahe = nmetrics(clahe_img)
 
-            # Display the images and LOE values
-            col1, col2, col3, col4 = st.columns(4)
+
+            uiqm_unsharp_mask = UIQM(unsharp_mask_img)
+            uciqe_unsharp_mask = UCIQE(unsharp_mask_img)
+            nmetrics_unsharp_mask = nmetrics(unsharp_mask_img)
+
+            uiqm_fused = UIQM(fused_img)
+            uciqe_fused = UCIQE(fused_img)
+            nmetrics_fused = nmetrics(fused_img)
+
+            uiqm_hef = UIQM(hef_img)
+            uciqe_hef = UCIQE(hef_img)
+            nmetrics_hef = nmetrics(hef_img)
+
+
+            col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
                 st.image(image, caption="Original Image", use_column_width=True)
             with col2:
-                st.image(clahe_img, caption=f"CLAHE Enhanced Image\nLOE: {loe_clahe:.2f}", use_column_width=True)
+                st.image(clahe_img, use_column_width=True)
+                st.markdown(f"**CLAHE Enhanced Image**\n\nLOE: {loe_clahe:.2f}\n\nUIQM: {uiqm_clahe:.2f}\n\nUCIQE: {uciqe_clahe:.2f}\n\n")
             with col3:
-                st.image(unsharp_mask_img, caption=f"Unsharp Masking Enhanced Image\nLOE: {loe_unsharp_mask:.2f}", use_column_width=True)
+                st.image(unsharp_mask_img, use_column_width=True)
+                st.markdown(f"**Unsharp Masking Enhanced Image**\n\nLOE: {loe_unsharp_mask:.2f}\n\nUIQM: {uiqm_unsharp_mask:.2f}\n\nUCIQE: {uciqe_unsharp_mask:.2f}\n")
             with col4:
-                st.image(fused_image, caption=f"Fusion Method Enhanced Image\nLOE: {loe_fused_image:.2f}", use_column_width=True)
+                st.image(fused_img, use_column_width=True)
+                st.markdown(f"**Fusion Method Enhanced Image**\n\nLOE: {loe_fused_image:.2f}\n\nUIQM: {uiqm_fused:.2f}\n\nUCIQE: {uciqe_fused:.2f}\n")
+            with col5:
+                st.image(hef_img, use_column_width=True)
+                st.markdown(f"**HEF Method Enhanced Image**\n\nLOE: {loe_hef_image:.2f}\n\nUIQM: {uiqm_hef:.2f}\n\nUCIQE: {uciqe_hef:.2f}\n")
+
+
     else:
         st.warning("Please upload an image first.")
 
