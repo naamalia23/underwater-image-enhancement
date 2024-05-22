@@ -54,10 +54,7 @@ The quality measurement matrices that we use are UIQM (Underwater Image Quality 
 4. Install the required dependencies:
 
     ```bash
-    pip install numpy
-    pip install opencv-python
-    pip install Pillow
-    pip install streamlit
+    pip install -r requirements.txt
     ```
 
 ## Usage
