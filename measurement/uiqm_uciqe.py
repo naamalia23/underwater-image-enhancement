@@ -1,28 +1,25 @@
 '''
 Metrics for unferwater image quality evaluation.
+
 Source: https://github.com/xueleichen/PSNR-SSIM-UCIQE-UIQM-Python
 Author: Xuelei Chen 
 Email: chenxuelei@hotmail.com
 
 Usage:
 python evaluate.py RESULT_PATH
-
-This version we have changed the library skimage to cv2 for image processing
-because we can only use opencv library in our project
-AND depreceated method like np.int, np.float to its self int,float
 '''
-import cv2
 import numpy as np
-import math
 # from skimage.measure import compare_psnr, compare_ssim
-# import sys
-# from skimage import io, color, filters
-# import os
+import math
+import sys
+from skimage import io, color, filters
+import os
+import math
 
-def nmetrics(image):
-    rgb = image
-    lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
-    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+def nmetrics(a):
+    rgb = a
+    lab = color.rgb2lab(a)
+    gray = color.rgb2gray(a)
     # UCIQE
     c1 = 0.4680
     c2 = 0.2745
@@ -78,24 +75,13 @@ def nmetrics(image):
     uicm =-0.0268 * np.sqrt(urg**2 + uyb**2) + 0.1586 * np.sqrt(s2rg + s2yb)
 
     #2nd term UISM (k1k2=8x8)
-    Rsobelx = rgb[:,:,0] * cv2.Sobel(rgb[:,:,0], ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
-    Rsobely = rgb[:,:,0] * cv2.Sobel(rgb[:,:,0], ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
-    Rsobelx = np.uint8(np.absolute(Rsobelx))
-    Rsobely = np.uint8(np.absolute(Rsobely))
+    Rsobel = rgb[:,:,0] * filters.sobel(rgb[:,:,0])
+    Gsobel = rgb[:,:,1] * filters.sobel(rgb[:,:,1])
+    Bsobel = rgb[:,:,2] * filters.sobel(rgb[:,:,2])
 
-    Gsobelx = rgb[:,:,1] * cv2.Sobel(rgb[:,:,1], ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
-    Gsobely = rgb[:,:,1] * cv2.Sobel(rgb[:,:,1], ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
-    Gsobelx = np.uint8(np.absolute(Gsobelx))
-    Gsobely = np.uint8(np.absolute(Gsobely))
-
-    Bsobelx = rgb[:,:,2] * cv2.Sobel(rgb[:,:,2], ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
-    Bsobely = rgb[:,:,2] * cv2.Sobel(rgb[:,:,2], ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
-    Bsobelx = np.uint8(np.absolute(Bsobelx))
-    Bsobely = np.uint8(np.absolute(Bsobely))
-    
-    Rsobel = cv2.bitwise_or(Rsobelx, Rsobely)
-    Gsobel = cv2.bitwise_or(Gsobelx, Gsobely)
-    Bsobel = cv2.bitwise_or(Bsobelx, Bsobely)
+    Rsobel=np.round(Rsobel).astype(np.uint8)
+    Gsobel=np.round(Gsobel).astype(np.uint8)
+    Bsobel=np.round(Bsobel).astype(np.uint8)
 
     Reme = eme(Rsobel)
     Geme = eme(Gsobel)
