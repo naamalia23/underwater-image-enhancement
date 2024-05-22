@@ -47,6 +47,8 @@ def unsharp_masking(image, radius=5, amount=2):
     enhanced_image = cv2.addWeighted(original_image, 1, unsharp_mask, amount, 0)
 
     # Convert the enhanced image back to BGR format
-    enhanced_image_bgr= cv2.cvtColor(enhanced_image, cv2.COLOR_GRAY2BGR)
+    # enhanced_image_bgr= cv2.cvtColor(enhanced_image, cv2.COLOR_GRAY2BGR)
+    enhanced_image_rgb= cv2.cvtColor(enhanced_image, cv2.COLOR_GRAY2RGB)
+
     # Step 5:  result
-    return enhanced_image_bgr.astype(np.uint8)
+    return enhanced_image_rgb.astype(np.uint8)
