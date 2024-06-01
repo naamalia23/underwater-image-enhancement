@@ -12,9 +12,9 @@ def percentile_stretch(channel):
     return stretched.astype(np.uint8)
 
 #===================
-#this blending only uses clahe and percentile
+#this blending only uses clahe and percentile dr paper garg2018
 
-def blending_clahe_2(image):
+def blending_clahe_percentile(image):
     # Convert the image from RGB to HSV
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     
@@ -50,7 +50,7 @@ def blending_clahe_2(image):
 
 
 #====================================
-#this blending uses clahe, percentile, gamma correction and sharpen image
+#this blending uses clahe, percentile, gamma correction and sharpen image purposed
 
 def gamma_correction(image, gamma=1.0):
     """
@@ -69,7 +69,7 @@ def sharpen_image(image):
                        [0, -1, 0]])
     return cv2.filter2D(image, -1, kernel)
 
-def blending_clahe(image):
+def blending_sharpen_clahe_percentile(image):
     """
     Enhance the underwater image using CLAHE, percentile stretching, gamma correction, and sharpening.
     """

@@ -8,16 +8,14 @@ from PIL import Image
 
 import cv2
 import streamlit as st
-# from streamlit_option_menu import option_menu
 import uuid
 
-# methods and measurement
+# methods
 from methods.clahe import apply_clahe
 from methods.unsharp_masking import unsharp_masking
-from methods.hef import hef_filtering
-from methods.wavelet import wavelet_based_fusion
-from methods.blending_clahe import blending_clahe
+from methods.blending_clahe import blending_clahe_percentile, blending_sharpen_clahe_percentile
 
+# measurement
 from measurement.loe import calculate_LOE
 from measurement.uiqm import getUIQM
 from measurement.uciqe import getUCIQE
@@ -53,38 +51,6 @@ def image_fusion(image, alpha=0.5):
     fused_image = cv2.addWeighted(image_clahe_rgb, alpha, image_usm_rgb, 1 - alpha, 0)
     
     return fused_image.astype(np.uint8)
-
-# Function to perform image fusion
-def fusion_clahe_hef(image, alpha=0.5):
-    """
-    Perform image fusion using a linear combination of CLAHE and HEF.
-    
-    Parameters:
-        - image: Input image (numpy array).
-        - alpha: Weighting factor for blending (float).
-    
-    Returns:
-        - Fused image (numpy array).
-    """
-    # Convert the input image to BGR format
-    image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    
-    # Apply CLAHE to the input image
-    image_clahe = apply_clahe(image_bgr)
-    
-    # Apply HEF Filtering to the input image
-    image_hef = hef_filtering(image_bgr)
-    
-    # Convert the enhanced images back to RGB format
-    image_clahe_rgb = cv2.cvtColor(image_clahe, cv2.COLOR_BGR2RGB)
-    image_hef_rgb = cv2.cvtColor(image_hef, cv2.COLOR_BGR2RGB)
-    
-    
-    # Perform weighted blending to fuse the images
-    fused_image = cv2.addWeighted(image_clahe_rgb, alpha, image_hef_rgb, 1 - alpha, 0)
-    
-    return fused_image.astype(np.uint8)
-
 
 # streamlit 
 # file uploads setup
@@ -150,94 +116,68 @@ def process_and_display_images(uploaded_files):
             # image
             image = np.array(Image.open(uploaded_file))
 
-        # Apply enhancement methods
+            # Apply enhancement methods
             clahe_img = apply_clahe(image)
-            unsharp_mask_img = unsharp_masking(image)
             fused_img = image_fusion(image)
-            hef_img = hef_filtering(image)
-            wavelet_img = wavelet_based_fusion(image)
-            clahe_hef_img = fusion_clahe_hef(image)
-            blending_clahe_img = blending_clahe(image)
+            blending_cp_img = blending_clahe_percentile(image)
+            blending_sharpen_cp_img = blending_sharpen_clahe_percentile(image)
 
             # Calculate LOE for each method
             loe_original = calculate_LOE(image, image)
             loe_clahe = calculate_LOE(image, clahe_img)
-            loe_unsharp_mask = calculate_LOE(image, unsharp_mask_img)
             loe_fused = calculate_LOE(image, fused_img)
-            loe_hef = calculate_LOE(image, hef_img)
-            loe_wavelet = calculate_LOE(image, wavelet_img)
-            loe_clahe_hef = calculate_LOE(image, clahe_hef_img)
-            loe_blending_clahe = calculate_LOE(image, blending_clahe_img)
+            loe_blending_cp = calculate_LOE(image, blending_cp_img)
+            loe_blending_sharpen_cp = calculate_LOE(image, blending_sharpen_cp_img)
 
             # Calculate UIQM,UCIQE for each method
             uiqm_original,uciqe_original = getUIQM(image), getUCIQE(image)
             uiqm_clahe,uciqe_clahe = getUIQM(clahe_img), getUCIQE(clahe_img)
-            uiqm_unsharp_mask,uciqe_unsharp_mask = getUIQM(unsharp_mask_img), getUCIQE(unsharp_mask_img)
             uiqm_fused,uciqe_fused = getUIQM(fused_img), getUCIQE(fused_img)
-            uiqm_hef,uciqe_hef = getUIQM(hef_img), getUCIQE(hef_img)
-            uiqm_wavelet,uciqe_wavelet = getUIQM(image), getUCIQE(image)  
-            uiqm_clahe_hef,uciqe_clahe_hef = getUIQM(image), getUCIQE(image)  
-            uiqm_blending_clahe, uciqe_blending_clahe = getUIQM(image), getUCIQE(image)
+            uiqm_blending_cp, uciqe_blending_cp = getUIQM(blending_cp_img), getUCIQE(blending_cp_img)
+            uiqm_blending_sharpen_cp, uciqe_blending_sharpen_cp = getUIQM(blending_sharpen_cp_img), getUCIQE(blending_sharpen_cp_img)
 
             # append image result
-            results.append((image, clahe_img, unsharp_mask_img, fused_img, hef_img, wavelet_img, clahe_hef_img, blending_clahe_img, uploaded_file.name))  
+            results.append((image, clahe_img,  fused_img, blending_cp_img, blending_sharpen_cp_img, uploaded_file.name))  
             
-        for image, clahe_img, unsharp_mask_img, fused_img, hef_img, wavelet_img, clahe_hef_img,blending_clahe_img, __name__ in results:
+        for image, clahe_img, fused_img, blending_cp_img, blending_sharpen_cp_img, __name__ in results:
             # Display the images and measurement values
-            # col1, col2, col3, col4, col5, col6 = st.columns(6)
             st.markdown(f"**{__name__}**\n\n")
-            cols = st.columns(2) # number of columns in each row! = 2
+            # col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
+            cols = st.columns(3) # number of columns in each row! = 2
             with cols[0]:
                 st.image(image, use_column_width=True)
                 st.markdown(f'''**Original Image**  
                     LOE: {loe_original:.2f}  
                     UIQM: {uiqm_original:.2f}  
                     UCIQE: {uciqe_original:.2f}''')
+            # clahe
             with cols[1]:
                 st.image(clahe_img, use_column_width=True)
                 st.markdown(f'''**CLAHE Enhanced Image**  
                     LOE: {loe_clahe:.2f}  
                     UIQM: {uiqm_clahe:.2f}  
                     UCIQE: {uciqe_clahe:.2f}''')
-            # UM
-            with cols[0]:
-                st.image(unsharp_mask_img, use_column_width=True)
-                st.markdown(f'''**UM Enhanced Image**  
-                LOE: {loe_unsharp_mask:.2f}  
-                UIQM: {uiqm_unsharp_mask:.2f}  
-                UCIQE: {uciqe_unsharp_mask:.2f}''')
-            with cols[1]:
+            # fusion CLAHE UM
+            with cols[2]:
                 st.image(fused_img, use_column_width=True)
-                st.markdown(f'''**Fusion UM Enhanced Image**  
-                LOE: {loe_fused:.2f}  
-                UIQM: {uiqm_fused:.2f}  
-                UCIQE: {uciqe_fused:.2f}''')
-            # HEF
+                st.markdown(f'''**Blendin CLAHE Unsharp masking Enhanced Image**  
+                    LOE: {loe_fused:.2f}  
+                    UIQM: {uiqm_fused:.2f}  
+                    UCIQE: {uciqe_fused:.2f}''')
+            # belending clahe
             with cols[0]:
-                st.image(hef_img, use_column_width=True)
-                st.markdown(f'''**HEF Enhanced Image**  
-                LOE: {loe_hef:.2f}  
-                UIQM: {uiqm_hef:.2f}  
-                UCIQE: {uciqe_hef:.2f}''')
+                st.image(blending_cp_img, use_column_width=True)
+                st.markdown(f'''**Blending CLAHE Percentile Enhanced Image**  
+                LOE: {loe_blending_cp:.2f}  
+                UIQM: {uiqm_blending_cp:.2f}  
+                UCIQE: {uciqe_blending_cp:.2f}''')
+            # belending sharpen clahe
             with cols[1]:
-                st.image(clahe_hef_img, use_column_width=True)
-                st.markdown(f'''**Fusion HEF Enhanced Image**  
-                LOE: {loe_clahe_hef:.2f}  
-                UIQM: {uiqm_clahe_hef:.2f}  
-                UCIQE: {uciqe_clahe_hef:.2f}''')
-            # WEVELET
-            with cols[0]:
-                st.image(wavelet_img, use_column_width=True)
-                st.markdown(f'''**Wavelet Enhanced Image**  
-                LOE: {loe_wavelet:.2f}  
-                UIQM: {uiqm_wavelet:.2f}  
-                UCIQE: {uciqe_wavelet:.2f}''')
-            with cols[1]:
-                st.image(blending_clahe_img, use_column_width=True)
-                st.markdown(f'''**Blending Clahe Image**  
-                LOE: {loe_blending_clahe:.2f}  
-                UIQM: {uiqm_blending_clahe:.2f}  
-                UCIQE: {uciqe_blending_clahe:.2f}''')
+                st.image(blending_sharpen_cp_img, use_column_width=True)
+                st.markdown(f'''**Blending Sharpen CLAHE Percentile Enhanced Image**  
+                LOE: {loe_blending_sharpen_cp:.2f}  
+                UIQM: {uiqm_blending_sharpen_cp:.2f}  
+                UCIQE: {uciqe_blending_sharpen_cp:.2f}''')
             
             st.divider()  # 👈 Draws a horizontal rule
 
