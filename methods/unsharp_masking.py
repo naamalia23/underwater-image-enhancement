@@ -52,3 +52,17 @@ def unsharp_masking(image, radius=5, amount=2):
 
     # Step 5:  result
     return enhanced_image_rgb.astype(np.uint8)
+
+def unsharp_masking_3(image, sigma=1.0, strength=1.5):
+    # Convert the image to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Create a blurred version of the image
+    blurred = cv2.GaussianBlur(gray, (0, 0), sigma)
+    
+    # Create an unsharp mask
+    sharpened = cv2.addWeighted(gray, 1 + strength, blurred, -strength, 0)
+    
+    # Merge back with the original image
+    usm_img = cv2.cvtColor(sharpened, cv2.COLOR_GRAY2BGR)
+    return usm_img

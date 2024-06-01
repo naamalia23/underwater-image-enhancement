@@ -16,6 +16,8 @@ from methods.clahe import apply_clahe
 from methods.unsharp_masking import unsharp_masking
 from methods.hef import hef_filtering
 from methods.wavelet import wavelet_based_fusion
+from methods.blending_clahe import blending_clahe
+
 from measurement.loe import calculate_LOE
 from measurement.uiqm_uciqe import nmetrics
 
@@ -154,6 +156,7 @@ def process_and_display_images(uploaded_files):
             hef_img = hef_filtering(image)
             wavelet_img = wavelet_based_fusion(image)
             clahe_hef_img = fusion_clahe_hef(image)
+            blending_clahe_img = blending_clahe(image)
 
             # Calculate LOE for each method
             loe_original = calculate_LOE(image, image)
@@ -163,6 +166,7 @@ def process_and_display_images(uploaded_files):
             loe_hef = calculate_LOE(image, hef_img)
             loe_wavelet = calculate_LOE(image, wavelet_img)
             loe_clahe_hef = calculate_LOE(image, clahe_hef_img)
+            loe_blending_clahe = calculate_LOE(image, blending_clahe_img)
 
             # Calculate UIQM,UCIQE using nmetrics for each method
             uiqm_original,uciqe_original = nmetrics(image) 
@@ -172,11 +176,11 @@ def process_and_display_images(uploaded_files):
             uiqm_hef,uciqe_hef = nmetrics(hef_img)
             uiqm_wavelet,uciqe_wavelet = nmetrics(wavelet_img)  
             uiqm_clahe_hef,uciqe_clahe_hef = nmetrics(clahe_hef_img)  
-
+            uiqm_blending_clahe, uciqe_blending_clahe = nmetrics(blending_clahe_img)
             # append image result
-            results.append((image, clahe_img, unsharp_mask_img, fused_img, hef_img, wavelet_img, clahe_hef_img, uploaded_file.name))  
+            results.append((image, clahe_img, unsharp_mask_img, fused_img, hef_img, wavelet_img, clahe_hef_img, blending_clahe_img, uploaded_file.name))  
             
-        for image, clahe_img, unsharp_mask_img, fused_img, hef_img, wavelet_img, clahe_hef_img, __name__ in results:
+        for image, clahe_img, unsharp_mask_img, fused_img, hef_img, wavelet_img, clahe_hef_img,blending_clahe_img, __name__ in results:
             # Display the images and measurement values
             # col1, col2, col3, col4, col5, col6 = st.columns(6)
             st.markdown(f"**{__name__}**\n\n")
@@ -226,6 +230,12 @@ def process_and_display_images(uploaded_files):
                 LOE: {loe_wavelet:.2f}  
                 UIQM: {uiqm_wavelet:.2f}  
                 UCIQE: {uciqe_wavelet:.2f}''')
+            with cols[1]:
+                st.image(blending_clahe_img, use_column_width=True)
+                st.markdown(f'''**Blending Clahe Image**  
+                LOE: {loe_blending_clahe:.2f}  
+                UIQM: {uiqm_blending_clahe:.2f}  
+                UCIQE: {uciqe_blending_clahe:.2f}''')
             
             st.divider()  # 👈 Draws a horizontal rule
 
