@@ -19,7 +19,8 @@ from methods.wavelet import wavelet_based_fusion
 from methods.blending_clahe import blending_clahe
 
 from measurement.loe import calculate_LOE
-from measurement.uiqm_uciqe import nmetrics
+from measurement.uiqm import getUIQM
+from measurement.uciqe import getUCIQE
 
 
 # Function to perform image fusion
@@ -168,15 +169,16 @@ def process_and_display_images(uploaded_files):
             loe_clahe_hef = calculate_LOE(image, clahe_hef_img)
             loe_blending_clahe = calculate_LOE(image, blending_clahe_img)
 
-            # Calculate UIQM,UCIQE using nmetrics for each method
-            uiqm_original,uciqe_original = nmetrics(image) 
-            uiqm_clahe,uciqe_clahe = nmetrics(clahe_img) 
-            uiqm_unsharp_mask,uciqe_unsharp_mask = nmetrics(unsharp_mask_img)
-            uiqm_fused,uciqe_fused = nmetrics(fused_img)
-            uiqm_hef,uciqe_hef = nmetrics(hef_img)
-            uiqm_wavelet,uciqe_wavelet = nmetrics(wavelet_img)  
-            uiqm_clahe_hef,uciqe_clahe_hef = nmetrics(clahe_hef_img)  
-            uiqm_blending_clahe, uciqe_blending_clahe = nmetrics(blending_clahe_img)
+            # Calculate UIQM,UCIQE for each method
+            uiqm_original,uciqe_original = getUIQM(image), getUCIQE(image)
+            uiqm_clahe,uciqe_clahe = getUIQM(clahe_img), getUCIQE(clahe_img)
+            uiqm_unsharp_mask,uciqe_unsharp_mask = getUIQM(unsharp_mask_img), getUCIQE(unsharp_mask_img)
+            uiqm_fused,uciqe_fused = getUIQM(fused_img), getUCIQE(fused_img)
+            uiqm_hef,uciqe_hef = getUIQM(hef_img), getUCIQE(hef_img)
+            uiqm_wavelet,uciqe_wavelet = getUIQM(image), getUCIQE(image)  
+            uiqm_clahe_hef,uciqe_clahe_hef = getUIQM(image), getUCIQE(image)  
+            uiqm_blending_clahe, uciqe_blending_clahe = getUIQM(image), getUCIQE(image)
+
             # append image result
             results.append((image, clahe_img, unsharp_mask_img, fused_img, hef_img, wavelet_img, clahe_hef_img, blending_clahe_img, uploaded_file.name))  
             
