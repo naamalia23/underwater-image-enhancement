@@ -1,70 +1,89 @@
 import cv2
 import numpy as np
-from measurement.uiqm import UIQM
-from measurement.uciqe import UCIQE
-from measurement.uiqm_uciqe import nmetrics
+from PIL import Image
+import matplotlib.pyplot as plt
 
-# ===========================
-# Enhancement Method
-# * CLAHE
-# * ...
-# ===========================
+# methods
+from methods.clahe import apply_clahe
+from methods.unsharp_masking import fusion_clahe_um
+from methods.hef import fusion_clahe_hef
+from methods.blending_clahe import blending_clahe_percentile
 
-# Function to perform CLAHE (Contrast Limited Adaptive Histogram Equalization)
-def apply_clahe(image):
-    # Convert the image to LAB color space
-    lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
-    
-    # Split the LAB image into L, A, and B channels
-    l, a, b = cv2.split(lab)
-    
-    # Apply CLAHE to the L channel
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-    l_clahe = clahe.apply(l)
-    
-    # Merge the CLAHE-enhanced L channel with the original A and B channels
-    lab_clahe = cv2.merge((l_clahe, a, b))
-    
-    # Convert LAB image back to RGB
-    enhanced_image = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2RGB)
-    
-    return enhanced_image
-
-
-# ===========================
-# code that runs on this file
-# * load image > calculate score
-# * enchance the image > calculate score
-# * enhance methode :
-#   - CLAHE
-# * show image: original and enhanced
-# ===========================
-# original image
-image = cv2.imread("dataset/image-1.jpg", cv2.IMREAD_COLOR)
 # measurement
-uiqm_score = UIQM(image)
-uciqe_score = UCIQE(image)
-nuiqm,nuciqe = nmetrics(image)
-print("\nOriginal Score")
-score_text = "UIQM: "+str(uiqm_score)+"\n"
-score_text += "UCIQE: "+str(uciqe_score)+"\n"
-score_text += "nUIQM: "+str(nuiqm)+" - nUCIQE: "+str(nuciqe)
-print(score_text)
+from measurement.loe import calculate_LOE
+from measurement.uiqm import getUIQM
+from measurement.uciqe import getUCIQE
 
-# Apply CLAHE
-clahe_img = apply_clahe(image)
-# measurement
-uiqm_score = UIQM(clahe_img)
-uciqe_score = UCIQE(clahe_img)
-nuiqm,nuciqe = nmetrics(clahe_img)
-print("-------\nCLAHE Score")
-score_text = "UIQM: "+str(uiqm_score)+"\n"
-score_text += "UCIQE: "+str(uciqe_score)+"\n"
-score_text += "nUIQM: "+str(nuiqm)+" - nUCIQE: "+str(nuciqe)
-print(score_text)
+images = ['dataset/image-1.png', 'dataset/image-3.png', 'dataset/image-15.png']
+results = []
+scores = []
 
-# show image
-cv2.imshow("Original", image)
-cv2.imshow("Clahe", clahe_img)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+for img in images :
+    # image = np.array(Image.open(img))
+    image = np.array(Image.open(img).resize((800,600)))
+
+    # Apply enhancement methods
+    clahe_img = apply_clahe(image)
+    clahe_um_img = fusion_clahe_um(image)
+    clahe_hef_img = fusion_clahe_hef(image)
+    blending_cp_img = blending_clahe_percentile(image)
+
+    # results.append((image, clahe_img, clahe_um_img, clahe_hef_img, blending_cp_img))
+    results.append(image)
+    results.append(clahe_img)
+    results.append(clahe_um_img)
+    results.append(clahe_hef_img)
+    results.append(blending_cp_img)
+
+    # Calculate LOE, UIQM,UCIQE for each method
+    loe_original, uiqm_original, uciqe_original = calculate_LOE(image,image), getUIQM(image), getUCIQE(image)
+    loe_clahe, uiqm_clahe, uciqe_clahe = calculate_LOE(image,clahe_img), getUIQM(clahe_img), getUCIQE(clahe_img)
+    loe_clahe_um, uiqm_clahe_um, uciqe_clahe_um = calculate_LOE(image,clahe_um_img), getUIQM(clahe_um_img), getUCIQE(clahe_um_img)
+    loe_clahe_hef, uiqm_clahe_hef, uciqe_clahe_hef = calculate_LOE(image,clahe_hef_img), getUIQM(clahe_hef_img), getUCIQE(clahe_hef_img)
+    loe_blending_cp, uiqm_blending_cp, uciqe_blending_cp = calculate_LOE(image,blending_cp_img), getUIQM(blending_cp_img), getUCIQE(blending_cp_img)
+
+    # score ="LOE: 0.0\nUIQM: 0.0\nUCIQE: 0.0"
+    scores.append(f"LOE: {loe_original:.2f}\nUIQM: {uiqm_original:.2f}\nUCIQE: {uciqe_original:.2f}")
+    scores.append(f"LOE: {loe_clahe:.2f}\nUIQM: {uiqm_clahe:.2f}\nUCIQE: {uciqe_clahe:.2f}")
+    scores.append(f"LOE: {loe_clahe_um:.2f}\nUIQM: {uiqm_clahe_um:.2f}\nUCIQE: {uciqe_clahe_um:.2f}")
+    scores.append(f"LOE: {loe_clahe_hef:.2f}\nUIQM: {uiqm_clahe_hef:.2f}\nUCIQE: {uciqe_clahe_hef:.2f}")
+    scores.append(f"LOE: {loe_blending_cp:.2f}\nUIQM: {uiqm_blending_cp:.2f}\nUCIQE: {uciqe_blending_cp:.2f}")
+
+# Number of images per row
+num_images = 15
+images_per_row = 5
+
+# Define headers
+column_headers = ['Original Image', 'CLAHE', 'Fusion CLAHE-UM', 'Fusion CLAHE-HEF', 'Blending CLAHE Percentile']
+row_headers = ['Image 1', 'Image 2', 'Image 3']
+
+# Calculate the number of rows needed
+num_rows = (num_images + images_per_row - 1) // images_per_row
+
+# Create a figure to display the images
+fig, axes = plt.subplots(nrows=num_rows, ncols=images_per_row, figsize=(12, 8))
+
+# Flatten axes array for easy iteration
+axes = axes.flatten()
+
+# Set up column headers
+for ax, col in zip(axes[:images_per_row], column_headers):
+    ax.set_title(col, size=7, weight='bold')
+
+# Set up row headers
+for i, row in enumerate(row_headers):
+    fig.text(0.05, 1 - (i / num_rows) - 0.5 / num_rows, row, ha='center', va='center', size=7, weight='bold', rotation=90)
+
+# scores ="LOE: 0.0\nUIQM: 0.0\nUCIQE: 0.0"
+# Display images and hide axes
+for i, ax in enumerate(axes):
+    if i < num_images:
+        ax.imshow(results[i])
+        ax.text(0.03, 0.15, scores[i], ha='left', va='center', transform=ax.transAxes,
+                style ='italic', 
+                fontsize = 7, 
+                bbox ={'facecolor':'white', 'alpha':0.8, 'pad':2, 'edgecolor':'none'})
+    ax.axis('off')  # Hide the axis
+
+plt.tight_layout()
+plt.show()
