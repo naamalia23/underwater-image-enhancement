@@ -3,6 +3,7 @@ import numpy as np
 from scipy.signal import convolve2d
 from scipy.fftpack import fft2, ifft2, fftshift
 from scipy.ndimage import gaussian_filter
+from methods.clahe import apply_clahe
 
 
 def hef_filtering(image, radius=1, cutoff_distance=10):
@@ -46,3 +47,33 @@ def hef_filtering(image, radius=1, cutoff_distance=10):
 
     return hef_sharpened.astype(np.uint8)
     
+# Function to perform image fusion
+def fusion_clahe_hef(image, alpha=0.5):
+    """
+    Perform image fusion using a linear combination of CLAHE and HEF.
+    
+    Parameters:
+        - image: Input image (numpy array).
+        - alpha: Weighting factor for blending (float).
+    
+    Returns:
+        - Fused image (numpy array).
+    """
+    # Convert the input image to BGR format
+    image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    
+    # Apply CLAHE to the input image
+    image_clahe = apply_clahe(image_bgr)
+    
+    # Apply hef to the input image
+    image_hef = hef_filtering(image_bgr)
+    
+    # Convert the enhanced images back to RGB format
+    image_clahe_rgb = cv2.cvtColor(image_clahe, cv2.COLOR_BGR2RGB)
+    image_hef_rgb = cv2.cvtColor(image_hef, cv2.COLOR_BGR2RGB)
+    
+    
+    # Perform weighted blending to fuse the images
+    fused_image = cv2.addWeighted(image_clahe_rgb, alpha, image_hef_rgb, 1 - alpha, 0)
+    
+    return fused_image.astype(np.uint8)

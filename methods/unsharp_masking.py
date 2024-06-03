@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from methods.clahe import apply_clahe
 
 # Function to perform Unsharp Masking
 def unsharp_masking_2(image, radius=3, amount=1):
@@ -66,3 +67,34 @@ def unsharp_masking_3(image, sigma=1.0, strength=1.5):
     # Merge back with the original image
     usm_img = cv2.cvtColor(sharpened, cv2.COLOR_GRAY2BGR)
     return usm_img
+
+# Function to perform image fusion
+def fusion_clahe_um(image, alpha=0.5):
+    """
+    Perform image fusion using a linear combination of CLAHE and Unsharp Masking.
+    
+    Parameters:
+        - image: Input image (numpy array).
+        - alpha: Weighting factor for blending (float).
+    
+    Returns:
+        - Fused image (numpy array).
+    """
+    # Convert the input image to BGR format
+    image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    
+    # Apply CLAHE to the input image
+    image_clahe = apply_clahe(image_bgr)
+    
+    # Apply Unsharp Masking to the input image
+    image_usm = unsharp_masking(image_bgr)
+    
+    # Convert the enhanced images back to RGB format
+    image_clahe_rgb = cv2.cvtColor(image_clahe, cv2.COLOR_BGR2RGB)
+    image_usm_rgb = cv2.cvtColor(image_usm, cv2.COLOR_BGR2RGB)
+    
+    
+    # Perform weighted blending to fuse the images
+    fused_image = cv2.addWeighted(image_clahe_rgb, alpha, image_usm_rgb, 1 - alpha, 0)
+    
+    return fused_image.astype(np.uint8)
