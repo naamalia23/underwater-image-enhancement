@@ -12,45 +12,14 @@ import uuid
 
 # methods
 from methods.clahe import apply_clahe
-from methods.unsharp_masking import unsharp_masking
-from methods.blending_clahe import blending_clahe_percentile, blending_sharpen_clahe_percentile
+from methods.unsharp_masking import fusion_clahe_um
+from methods.hef import fusion_clahe_hef
+from methods.blending_clahe import blending_clahe_percentile
 
 # measurement
 from measurement.loe import calculate_LOE
 from measurement.uiqm import getUIQM
 from measurement.uciqe import getUCIQE
-
-
-# Function to perform image fusion
-def image_fusion(image, alpha=0.5):
-    """
-    Perform image fusion using a linear combination of CLAHE and Unsharp Masking.
-    
-    Parameters:
-        - image: Input image (numpy array).
-        - alpha: Weighting factor for blending (float).
-    
-    Returns:
-        - Fused image (numpy array).
-    """
-    # Convert the input image to BGR format
-    image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    
-    # Apply CLAHE to the input image
-    image_clahe = apply_clahe(image_bgr)
-    
-    # Apply Unsharp Masking to the input image
-    image_usm = unsharp_masking(image_bgr)
-    
-    # Convert the enhanced images back to RGB format
-    image_clahe_rgb = cv2.cvtColor(image_clahe, cv2.COLOR_BGR2RGB)
-    image_usm_rgb = cv2.cvtColor(image_usm, cv2.COLOR_BGR2RGB)
-    
-    
-    # Perform weighted blending to fuse the images
-    fused_image = cv2.addWeighted(image_clahe_rgb, alpha, image_usm_rgb, 1 - alpha, 0)
-    
-    return fused_image.astype(np.uint8)
 
 # streamlit 
 # file uploads setup
@@ -59,7 +28,7 @@ ALLOWED_TYPES = ["png", "jpg", "jpeg"]
 
 def setup_page():
     """Sets up the Streamlit page configuration."""
-    st.set_page_config(page_title="Underwater Image Enhancement", page_icon=":star:") 
+    st.set_page_config(page_title="Underwater Image Enhancement", page_icon=":star:", layout="wide") 
     st.title("Underwater Image Enhancement Methods Comparison")
     hide_streamlit_style()
 
@@ -109,75 +78,77 @@ def process_and_display_images(uploaded_files):
         st.warning(f"Maximum {MAX_FILES} files will be processed.")
         uploaded_files = uploaded_files[:MAX_FILES]
 
-    results = []
+    # results = []
 
     with st.spinner("Enhancing Images..."):
         for uploaded_file in uploaded_files:
+            __name__ = uploaded_file.name
             # image
-            image = np.array(Image.open(uploaded_file))
+            # image = np.array(Image.open(uploaded_file))
+            image = np.array(Image.open(uploaded_file).resize((800,600)))
 
             # Apply enhancement methods
             clahe_img = apply_clahe(image)
-            fused_img = image_fusion(image)
+            clahe_um_img = fusion_clahe_um(image)
+            clahe_hef_img = fusion_clahe_hef(image)
             blending_cp_img = blending_clahe_percentile(image)
-            blending_sharpen_cp_img = blending_sharpen_clahe_percentile(image)
 
             # Calculate LOE for each method
             loe_original = calculate_LOE(image, image)
             loe_clahe = calculate_LOE(image, clahe_img)
-            loe_fused = calculate_LOE(image, fused_img)
+            loe_clahe_um = calculate_LOE(image, clahe_um_img)
+            loe_clahe_hef = calculate_LOE(image, clahe_hef_img)
             loe_blending_cp = calculate_LOE(image, blending_cp_img)
-            loe_blending_sharpen_cp = calculate_LOE(image, blending_sharpen_cp_img)
 
             # Calculate UIQM,UCIQE for each method
             uiqm_original,uciqe_original = getUIQM(image), getUCIQE(image)
             uiqm_clahe,uciqe_clahe = getUIQM(clahe_img), getUCIQE(clahe_img)
-            uiqm_fused,uciqe_fused = getUIQM(fused_img), getUCIQE(fused_img)
+            uiqm_clahe_um,uciqe_clahe_um = getUIQM(clahe_um_img), getUCIQE(clahe_um_img)
+            uiqm_clahe_hef,uciqe_clahe_hef = getUIQM(clahe_hef_img), getUCIQE(clahe_hef_img)
             uiqm_blending_cp, uciqe_blending_cp = getUIQM(blending_cp_img), getUCIQE(blending_cp_img)
-            uiqm_blending_sharpen_cp, uciqe_blending_sharpen_cp = getUIQM(blending_sharpen_cp_img), getUCIQE(blending_sharpen_cp_img)
 
-            # append image result
-            results.append((image, clahe_img,  fused_img, blending_cp_img, blending_sharpen_cp_img, uploaded_file.name))  
+        #     # append image result
+        #     results.append((image, clahe_img,  clahe_um_img, clahe_hef_img, blending_cp_img, uploaded_file.name))  
             
-        for image, clahe_img, fused_img, blending_cp_img, blending_sharpen_cp_img, __name__ in results:
+        # for image, clahe_img,  clahe_um_img, clahe_hef_img, blending_cp_img, __name__ in results:
             # Display the images and measurement values
             st.markdown(f"**{__name__}**\n\n")
-            # col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
-            cols = st.columns(3) # number of columns in each row! = 2
+            cols = st.columns(5) # number of columns in each row! = 5
+            # original
             with cols[0]:
                 st.image(image, use_column_width=True)
-                st.markdown(f'''**Original Image**  
+                st.markdown(f'''**Original Image**   
                     LOE: {loe_original:.2f}  
                     UIQM: {uiqm_original:.2f}  
                     UCIQE: {uciqe_original:.2f}''')
             # clahe
             with cols[1]:
                 st.image(clahe_img, use_column_width=True)
-                st.markdown(f'''**CLAHE Enhanced Image**  
+                st.markdown(f'''**CLAHE Image**  
                     LOE: {loe_clahe:.2f}  
                     UIQM: {uiqm_clahe:.2f}  
                     UCIQE: {uciqe_clahe:.2f}''')
             # fusion CLAHE UM
             with cols[2]:
-                st.image(fused_img, use_column_width=True)
-                st.markdown(f'''**Blendin CLAHE Unsharp masking Enhanced Image**  
-                    LOE: {loe_fused:.2f}  
-                    UIQM: {uiqm_fused:.2f}  
-                    UCIQE: {uciqe_fused:.2f}''')
+                st.image(clahe_hef_img, use_column_width=True)
+                st.markdown(f'''**Fusion CLAHE-UM Image**  
+                    LOE: {loe_clahe_um:.2f}  
+                    UIQM: {uiqm_clahe_um:.2f}  
+                    UCIQE: {uciqe_clahe_um:.2f}''')
+            # fusion CLAHE HEF
+            with cols[3]:
+                st.image(clahe_um_img, use_column_width=True)
+                st.markdown(f'''**Fusion CLAHE-HEF Image**  
+                    LOE: {loe_clahe_hef:.2f}  
+                    UIQM: {uiqm_clahe_hef:.2f}  
+                    UCIQE: {uciqe_clahe_hef:.2f}''')
             # belending clahe
-            with cols[0]:
+            with cols[4]:
                 st.image(blending_cp_img, use_column_width=True)
-                st.markdown(f'''**Blending CLAHE Percentile Enhanced Image**  
-                LOE: {loe_blending_cp:.2f}  
-                UIQM: {uiqm_blending_cp:.2f}  
-                UCIQE: {uciqe_blending_cp:.2f}''')
-            # belending sharpen clahe
-            with cols[1]:
-                st.image(blending_sharpen_cp_img, use_column_width=True)
-                st.markdown(f'''**Blending Sharpen CLAHE Percentile Enhanced Image**  
-                LOE: {loe_blending_sharpen_cp:.2f}  
-                UIQM: {uiqm_blending_sharpen_cp:.2f}  
-                UCIQE: {uciqe_blending_sharpen_cp:.2f}''')
+                st.markdown(f'''**Blending CLAHE Percentile Image**  
+                    LOE: {loe_blending_cp:.2f}  
+                    UIQM: {uiqm_blending_cp:.2f}  
+                    UCIQE: {uciqe_blending_cp:.2f}''')
             
             st.divider()  # 👈 Draws a horizontal rule
 
