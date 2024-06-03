@@ -2,50 +2,62 @@
 UCIQE
 Metrics for unferwater image quality evaluation.
 
-Source: https://github.com/TongJiayan/UCIQE-python/blob/main/UCIQE.py
-Author: TongJiayan
-Based on the paper: https://doi.org/10.1109/TIP.2015.2491020
+reference to the following below: 
+Code: https://github.com/bilityniu/underimage-fusion-enhancement/blob/master/UCIQE.m
+Paper: 
+    https://doi.org/10.1109/TIP.2015.2491020 (UCIQE)
+    https://doi.org/10.1109/TIP.2017.2759252 (Image Enhancement)
 
 '''
 
 import numpy as np
-from skimage import io, color
+import cv2
+from skimage import color, exposure
 
-def getUCIQE(img):
-    img_LAB = color.rgb2lab(img)
-    img_LAB = np.array(img_LAB,dtype=np.float64)
+def getUCIQE(I, Coe_Metric=None):
+    # Set default coefficients if none are provided
+    if Coe_Metric is None:
+        Coe_Metric = [0.4680, 0.2745, 0.2576]
     
-    # Trained coefficients are c1=0.4680, c2=0.2745, c3=0.2576 according to paper.
-    # coe_Metric = [0.4680, 0.2745, 0.2576]
-    c1,c2,c3 = 0.4680, 0.2745, 0.2576
+    # Transform to Lab color space
+    Img_lab = cv2.cvtColor(I, cv2.COLOR_RGB2LAB)
     
-    img_lum = img_LAB[:,:,0]/255.0
-    img_a = img_LAB[:,:,1]/255.0
-    img_b = img_LAB[:,:,2]/255.0
+    Img_lum = Img_lab[:, :, 0].astype(np.float64)
+    Img_lum = Img_lum / 255 + np.finfo(float).eps
 
-    # item-1 : contrast of chroma
-    chroma = np.sqrt(np.square(img_a)+np.square(img_b))
-    sigma_c = np.std(chroma)
+    Img_a = Img_lab[:, :, 1].astype(np.float64) / 255
+    Img_b = Img_lab[:, :, 2].astype(np.float64) / 255
 
-    # item-2 : contrast of luminance
-    img_lum = img_lum.flatten()
-    sorted_index = np.argsort(img_lum)
-    top_index = sorted_index[int(len(img_lum)*0.99)]
-    bottom_index = sorted_index[int(len(img_lum)*0.01)]
-    con_lum = img_lum[top_index] - img_lum[bottom_index]
+    # Chroma
+    Img_Chr = np.sqrt(Img_a.flatten()**2 + Img_b.flatten()**2)
+    
+    # Saturation
+    Img_Sat = Img_Chr / np.sqrt(Img_Chr**2 + Img_lum.flatten()**2)
 
-    # item-3 : average saturation
-    chroma = chroma.flatten()
-    sat = np.divide(chroma, img_lum, out=np.zeros_like(chroma, dtype=np.float64), where=img_lum!=0)
-    avg_sat = np.mean(sat)
+    # Average of saturation
+    Aver_Sat = np.mean(Img_Sat)
+    
+    # Average of Chroma
+    Aver_Chr = np.mean(Img_Chr)
+    
+    # Variance of Chroma
+    Var_Chr = np.sqrt(np.mean((np.abs(1 - (Aver_Chr / Img_Chr))**2)))
+    
+    # Contrast of luminance
+    Tol = exposure.rescale_intensity(Img_lum)
+    Con_lum = Tol.max() - Tol.min()
+    
+    # Get final quality value
+    Qualty_Val = Coe_Metric[0] * Var_Chr + Coe_Metric[1] * Con_lum + Coe_Metric[2] * Aver_Sat
+    
+    return Qualty_Val
 
-    # uciqe = sigma_c*coe_Metric[0] + con_lum*coe_Metric[1] + avg_sat*coe_Metric[2]
-    uciqe = sigma_c*c1 + con_lum*c2 + avg_sat*c3
+# Example usage
+if __name__ == "__main__":
+    # Load an example image (replace with your own image path)
+    I = cv2.imread('dataset/image-6.jpg')
+    I = cv2.cvtColor(I, cv2.COLOR_BGR2RGB)
 
-    return uciqe
-
-if __name__ == '__main__':
-    image_path = 'dataset/image-6.jpg'
-    img = io.imread(image_path)
-    uciqe = getUCIQE(img)
-    print("UCIQE = ",uciqe)
+    # Calculate UCIQE
+    uciqe_value = getUCIQE(I)
+    print("UCIQE Value:", uciqe_value)

@@ -1,157 +1,138 @@
 '''
+UIQM
 Metrics for unferwater image quality evaluation.
 
-Source: https://github.com/xueleichen/PSNR-SSIM-UCIQE-UIQM-Python
-Author: Xuelei Chen 
-Email: chenxuelei@hotmail.com
-based on the following paper: UIQM https://ieeexplore.ieee.org/abstract/document/7305804
+reference to the following below: 
+Code: https://github.com/bilityniu/underimage-fusion-enhancement/blob/master/UIQM.m
+Paper: 
+    https://doi.org/10.1109/TIP.2015.2491020 (UIQM)
+    https://doi.org/10.1109/TIP.2017.2759252 (Image Enhancement)
 
-Usage:
-python evaluate.py RESULT_PATH
 '''
 
 import numpy as np
-import math
-from skimage import io, color, filters
+import cv2
+from scipy.ndimage import convolve
 
-def getUIQM(img):
-    rgb = img
-    gray = color.rgb2gray(img)
-    
-    # UIQM
-    p1 = 0.0282
-    p2 = 0.2953
-    p3 = 3.5753
-
-    #1st term UICM
-    rg = rgb[:,:,0] - rgb[:,:,1]
-    yb = (rgb[:,:,0] + rgb[:,:,1]) / 2 - rgb[:,:,2]
-    rgl = np.sort(rg,axis=None)
-    ybl = np.sort(yb,axis=None)
-    al1 = 0.1
-    al2 = 0.1
-    T1 = int(al1 * len(rgl))
-    T2 = int(al2 * len(rgl))
-    rgl_tr = rgl[T1:-T2]
-    ybl_tr = ybl[T1:-T2]
-
-    urg = np.mean(rgl_tr)
-    s2rg = np.mean((rgl_tr - urg) ** 2)
-    uyb = np.mean(ybl_tr)
-    s2yb = np.mean((ybl_tr- uyb) ** 2)
-
-    uicm =-0.0268 * np.sqrt(urg**2 + uyb**2) + 0.1586 * np.sqrt(s2rg + s2yb)
-
-    #2nd term UISM (k1k2=8x8)
-    Rsobel = rgb[:,:,0] * filters.sobel(rgb[:,:,0])
-    Gsobel = rgb[:,:,1] * filters.sobel(rgb[:,:,1])
-    Bsobel = rgb[:,:,2] * filters.sobel(rgb[:,:,2])
-
-    Rsobel=np.round(Rsobel).astype(np.uint8)
-    Gsobel=np.round(Gsobel).astype(np.uint8)
-    Bsobel=np.round(Bsobel).astype(np.uint8)
-
-    Reme = eme(Rsobel)
-    Geme = eme(Gsobel)
-    Beme = eme(Bsobel)
-
-    uism = 0.299 * Reme + 0.587 * Geme + 0.114 * Beme
-
-    #3rd term UIConM
-    uiconm = logamee(gray)
-
-    uiqm = p1 * uicm + p2 * uism + p3 * uiconm
-
+def getUIQM(image):
+    c1, c2, c3 = 0.0282, 0.2953, 3.5753
+    uicm = UICM(image)
+    uism = UISM(image)
+    uiconm = UIConM(image)
+    uiqm = c1 * uicm + c2 * uism + c3 * uiconm
     return uiqm
 
-def eme(ch,blocksize=8):
+def UICM(image):
+    R = image[:, :, 0].astype(float)
+    G = image[:, :, 1].astype(float)
+    B = image[:, :, 2].astype(float)
+    RG = R - G
+    YB = (R + G) / 2 - B
 
-    num_x = math.ceil(ch.shape[0] / blocksize)
-    num_y = math.ceil(ch.shape[1] / blocksize)
+    K = R.size
+
+    # For R-G channel
+    RG1 = np.sort(RG.ravel())
+    alphaL = 0.1
+    alphaR = 0.1
+    RG1 = RG1[int(alphaL * K) : int(K * (1 - alphaR))]
+    N = K * (1 - alphaL - alphaR)
+    meanRG = np.mean(RG1)
+    deltaRG = np.sqrt(np.mean((RG1 - meanRG) ** 2))
+
+    # For Y-B channel
+    YB1 = np.sort(YB.ravel())
+    YB1 = YB1[int(alphaL * K) : int(K * (1 - alphaR))]
+    meanYB = np.mean(YB1)
+    deltaYB = np.sqrt(np.mean((YB1 - meanYB) ** 2))
+
+    # UICM
+    uicm = -0.0268 * np.sqrt(meanRG ** 2 + meanYB ** 2) + 0.1586 * np.sqrt(deltaRG ** 2 + deltaYB ** 2)
     
-    eme = 0
-    w = 2. / (num_x * num_y)
-    for i in range(num_x):
+    return uicm
 
-        xlb = i * blocksize
-        if i < num_x - 1:
-            xrb = (i+1) * blocksize
-        else:
-            xrb = ch.shape[0]
+def UISM(image):
+    Ir = image[:, :, 0].astype(float)
+    Ig = image[:, :, 1].astype(float)
+    Ib = image[:, :, 2].astype(float)
 
-        for j in range(num_y):
+    hx = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+    hy = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
 
-            ylb = j * blocksize
-            if j < num_y - 1:
-                yrb = (j+1) * blocksize
-            else:
-                yrb = ch.shape[1]
-            
-            block = ch[xlb:xrb,ylb:yrb]
+    SobelR = np.abs(convolve(Ir, hx) + convolve(Ir, hy))
+    SobelG = np.abs(convolve(Ig, hx) + convolve(Ig, hy))
+    SobelB = np.abs(convolve(Ib, hx) + convolve(Ib, hy))
 
-            blockmin = float(np.min(block))
-            blockmax = float(np.max(block))
+    patchsz = 5
+    m, n = Ir.shape
+    SobelR = cv2.resize(SobelR, (n - n % patchsz + patchsz, m - m % patchsz + patchsz))
+    SobelG = cv2.resize(SobelG, (n - n % patchsz + patchsz, m - m % patchsz + patchsz))
+    SobelB = cv2.resize(SobelB, (n - n % patchsz + patchsz, m - m % patchsz + patchsz))
 
-            # # old version
-            # if blockmin == 0.0: eme += 0
-            # elif blockmax == 0.0: eme += 0
-            # else: eme += w * math.log(blockmax / blockmin)
+    m, n = SobelR.shape
+    k1 = m // patchsz
+    k2 = n // patchsz
 
-            # new version
-            if blockmin == 0: blockmin+=1
-            if blockmax == 0: blockmax+=1
-            eme += w * math.log(blockmax / blockmin)
-    return eme
+    def calc_eme(SobelC):
+        EME = 0
+        for i in range(0, m, patchsz):
+            for j in range(0, n, patchsz):
+                im = SobelC[i:i + patchsz, j:j + patchsz]
+                if np.max(im) != 0 and np.min(im) != 0:
+                    EME += np.log(np.max(im) / np.min(im))
+        return 2 / (k1 * k2) * np.abs(EME)
 
-def plipsum(i,j,gamma=1026):
-    return i + j - i * j / gamma
+    EMER = calc_eme(SobelR)
+    EMEG = calc_eme(SobelG)
+    EMEB = calc_eme(SobelB)
 
-def plipsub(i,j,k=1026):
-    return k * (i - j) / (k - j)
+    lambdaR = 0.299
+    lambdaG = 0.587
+    lambdaB = 0.114
+    uism = lambdaR * EMER + lambdaG * EMEG + lambdaB * EMEB
 
-def plipmult(c,j,gamma=1026):
-    return gamma - gamma * (1 - j / gamma)**c
+    return uism
 
-def logamee(ch,blocksize=8):
+def UIConM(image):
+    R = image[:, :, 0].astype(float)
+    G = image[:, :, 1].astype(float)
+    B = image[:, :, 2].astype(float)
 
-    num_x = math.ceil(ch.shape[0] / blocksize)
-    num_y = math.ceil(ch.shape[1] / blocksize)
-    
-    s = 0
-    w = 1. / (num_x * num_y)
-    for i in range(num_x):
+    patchsz = 5
+    m, n = R.shape
+    R = cv2.resize(R, (n - n % patchsz + patchsz, m - m % patchsz + patchsz))
+    G = cv2.resize(G, (n - n % patchsz + patchsz, m - m % patchsz + patchsz))
+    B = cv2.resize(B, (n - n % patchsz + patchsz, m - m % patchsz + patchsz))
 
-        xlb = i * blocksize
-        if i < num_x - 1:
-            xrb = (i+1) * blocksize
-        else:
-            xrb = ch.shape[0]
+    m, n = R.shape
+    k1 = m // patchsz
+    k2 = n // patchsz
 
-        for j in range(num_y):
+    def calc_amee(C):
+        AMEE = 0
+        for i in range(0, m, patchsz):
+            for j in range(0, n, patchsz):
+                im = C[i:i + patchsz, j:j + patchsz]
+                Max = np.max(im)
+                Min = np.min(im)
+                if (Max != 0 or Min != 0) and Max != Min:
+                    AMEE += np.log((Max - Min) / (Max + Min)) * ((Max - Min) / (Max + Min))
+        return 1 / (k1 * k2) * np.abs(AMEE)
 
-            ylb = j * blocksize
-            if j < num_y - 1:
-                yrb = (j+1) * blocksize
-            else:
-                yrb = ch.shape[1]
-            
-            block = ch[xlb:xrb,ylb:yrb]
-            blockmin = float(np.min(block))
-            blockmax = float(np.max(block))
+    AMEER = calc_amee(R)
+    AMEEG = calc_amee(G)
+    AMEEB = calc_amee(B)
 
-            top = plipsub(blockmax,blockmin)
-            bottom = plipsum(blockmax,blockmin)
+    uiconm = AMEER + AMEEG + AMEEB
+    return uiconm
 
-            m = top/bottom
-            if m ==0.:
-                s+=0
-            else:
-                s += (m) * np.log(m)
 
-    return plipmult(w,s)
+# Example usage
+if __name__ == "__main__":
+    # Load an example image (replace with your own image path)
+    I = cv2.imread('dataset/image-6.jpg')
+    I = cv2.cvtColor(I, cv2.COLOR_BGR2RGB)
 
-if __name__ == '__main__':
-    image_path = 'dataset/image-6.jpg'
-    img = io.imread(image_path)
-    uiqm = getUIQM(img)
-    print("UIQM = ",uiqm)
+    # Calculate UCIQE
+    uciqe_value = getUIQM(I)
+    print("UIQM Value:", uciqe_value)
