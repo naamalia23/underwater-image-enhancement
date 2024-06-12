@@ -54,35 +54,36 @@ num_images = 15
 images_per_row = 5
 
 # Define headers
-column_headers = ['Original Image', 'CLAHE', 'Fusion CLAHE-UM', 'Fusion CLAHE-HEF', 'Blending CLAHE Percentile']
+# column_headers = ['Original Image', 'CLAHE', 'Fusion CLAHE-UM', 'Fusion CLAHE-HEF', 'Blending CLAHE Percentile']
+column_headers = ['(a)', '(b)', '(c)', '(d)', '(e)']
 row_headers = ['Image 1', 'Image 2', 'Image 3']
 
 # Calculate the number of rows needed
 num_rows = (num_images + images_per_row - 1) // images_per_row
 
 # Create a figure to display the images
-fig, axes = plt.subplots(nrows=num_rows, ncols=images_per_row, figsize=(12, 8))
+fig, axes = plt.subplots(nrows=num_rows, ncols=images_per_row, figsize=(12, 10))
 
 # Flatten axes array for easy iteration
 axes = axes.flatten()
 
 # Set up column headers
 for ax, col in zip(axes[:images_per_row], column_headers):
-    ax.set_title(col, size=7, weight='bold')
+    ax.set_title(col, size=10, weight='bold')
 
 # Set up row headers
 for i, row in enumerate(row_headers):
-    fig.text(0.05, 1 - (i / num_rows) - 0.5 / num_rows, row, ha='center', va='center', size=7, weight='bold', rotation=90)
+    fig.text(0.05, 1 - (i / num_rows) - 0.5 / num_rows, row, ha='center', va='center', size=10, weight='bold', rotation=90)
 
 # scores ="LOE: 0.0\nUIQM: 0.0\nUCIQE: 0.0"
 # Display images and hide axes
 for i, ax in enumerate(axes):
     if i < num_images:
         ax.imshow(results[i])
-        ax.text(0.03, 0.15, scores[i], ha='left', va='center', transform=ax.transAxes,
-                style ='italic', 
-                fontsize = 7, 
-                bbox ={'facecolor':'white', 'alpha':0.8, 'pad':2, 'edgecolor':'none'})
+        # ax.text(0.03, 0.15, scores[i], ha='left', va='center', transform=ax.transAxes,
+        #         style ='italic', 
+        #         fontsize = 7, 
+        #         bbox ={'facecolor':'white', 'alpha':0.8, 'pad':2, 'edgecolor':'none'})
     ax.axis('off')  # Hide the axis
 
 plt.tight_layout()
