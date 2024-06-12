@@ -29,7 +29,7 @@ ALLOWED_TYPES = ["png", "jpg", "jpeg"]
 def setup_page():
     """Sets up the Streamlit page configuration."""
     st.set_page_config(page_title="Underwater Image Enhancement", page_icon=":star:", layout="wide") 
-    st.title("Underwater Image Enhancement Methods Comparison")
+    st.title("Utilizing Edge Device and Streamlit for Comparative Evaluation of CLAHE-Based Underwater Image Enhancement Techniques")
     hide_streamlit_style()
 
 def hide_streamlit_style():
@@ -61,7 +61,7 @@ def display_ui():
 def display_footer():
     """Displays a custom footer."""
     footer = """<div style="position: fixed; bottom: 0; left: 20px;">
-                <p>Developed with ❤ by <a href="https://github.com/naamalia23/underwater-image-enhancement" target="_blank">@Team</a></p>
+                <p>Developed with ❤ by <a href="https://github.com/naamalia23/underwater-image-enhancement" target="_blank">@HydroVision Pioneers</a></p>
                 </div>"""
     st.sidebar.markdown(footer, unsafe_allow_html=True)
 
@@ -79,7 +79,7 @@ def process_and_display_images(uploaded_files):
         uploaded_files = uploaded_files[:MAX_FILES]
 
     # results = []
-
+    download_key = 0
     with st.spinner("Enhancing Images..."):
         for uploaded_file in uploaded_files:
             __name__ = uploaded_file.name
@@ -128,6 +128,8 @@ def process_and_display_images(uploaded_files):
                     LOE: {loe_clahe:.2f}  
                     UIQM: {uiqm_clahe:.2f}  
                     UCIQE: {uciqe_clahe:.2f}''')
+                download_key += 1
+                st.button("Download", key="download"+str(download_key))
             # fusion CLAHE UM
             with cols[2]:
                 st.image(clahe_hef_img, use_column_width=True)
@@ -135,6 +137,8 @@ def process_and_display_images(uploaded_files):
                     LOE: {loe_clahe_um:.2f}  
                     UIQM: {uiqm_clahe_um:.2f}  
                     UCIQE: {uciqe_clahe_um:.2f}''')
+                download_key += 1
+                st.button("Download", key="download"+str(download_key))
             # fusion CLAHE HEF
             with cols[3]:
                 st.image(clahe_um_img, use_column_width=True)
@@ -142,6 +146,8 @@ def process_and_display_images(uploaded_files):
                     LOE: {loe_clahe_hef:.2f}  
                     UIQM: {uiqm_clahe_hef:.2f}  
                     UCIQE: {uciqe_clahe_hef:.2f}''')
+                download_key += 1
+                st.button("Download", key="download"+str(download_key))
             # belending clahe
             with cols[4]:
                 st.image(blending_cp_img, use_column_width=True)
@@ -149,7 +155,8 @@ def process_and_display_images(uploaded_files):
                     LOE: {loe_blending_cp:.2f}  
                     UIQM: {uiqm_blending_cp:.2f}  
                     UCIQE: {uciqe_blending_cp:.2f}''')
-            
+                download_key += 1
+                st.button("Download", key="download"+str(download_key))
             st.divider()  # 👈 Draws a horizontal rule
 
         # download image result 
