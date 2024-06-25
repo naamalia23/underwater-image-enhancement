@@ -1,0 +1,7 @@
+numpy
+opencv-python
+Pillow
+streamlit
+scikit-image
+streamlit_option_menu
+PyWavelets
